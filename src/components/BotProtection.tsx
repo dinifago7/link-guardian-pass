@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,30 +35,12 @@ const BotProtection: React.FC = () => {
   const [accessAttempts, setAccessAttempts] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Generate random math captcha
+  // Generate simple math captcha (only addition with small numbers)
   const generateCaptcha = () => {
-    const num1 = Math.floor(Math.random() * 10) + 1;
-    const num2 = Math.floor(Math.random() * 10) + 1;
-    const operators = ['+', '-', '*'];
-    const operator = operators[Math.floor(Math.random() * operators.length)];
-    
-    let answer = 0;
-    let question = '';
-    
-    switch (operator) {
-      case '+':
-        answer = num1 + num2;
-        question = `${num1} + ${num2}`;
-        break;
-      case '-':
-        answer = num1 - num2;
-        question = `${num1} - ${num2}`;
-        break;
-      case '*':
-        answer = num1 * num2;
-        question = `${num1} × ${num2}`;
-        break;
-    }
+    const num1 = Math.floor(Math.random() * 5) + 1; // 1-5
+    const num2 = Math.floor(Math.random() * 5) + 1; // 1-5
+    const answer = num1 + num2;
+    const question = `${num1} + ${num2}`;
     
     setCaptchaQuestion({ question, answer });
   };
@@ -403,21 +384,27 @@ const BotProtection: React.FC = () => {
                 <div className="space-y-4 p-4 bg-slate-700 rounded-lg">
                   <div className="text-center">
                     <h3 className="text-lg font-semibold text-white mb-2">
-                      Solve this problem:
+                      Simple Math Problem:
                     </h3>
-                    <p className="text-2xl font-bold text-purple-400 mb-4">
+                    <p className="text-3xl font-bold text-purple-400 mb-4">
                       {captchaQuestion.question} = ?
+                    </p>
+                    <p className="text-sm text-slate-300 mb-3">
+                      Just add the two numbers together
                     </p>
                     <input
                       type="number"
                       value={captchaAnswer}
                       onChange={(e) => setCaptchaAnswer(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-600 text-white rounded-lg border border-slate-500 focus:border-purple-400 focus:outline-none"
-                      placeholder="Enter your answer"
+                      className="w-full px-3 py-2 bg-slate-600 text-white rounded-lg border border-slate-500 focus:border-purple-400 focus:outline-none text-center text-xl"
+                      placeholder="Enter answer"
+                      min="1"
+                      max="10"
                     />
                     <Button 
                       onClick={verifyCaptcha}
                       className="w-full mt-3 bg-purple-600 hover:bg-purple-700"
+                      disabled={!captchaAnswer}
                     >
                       Verify Answer
                     </Button>
