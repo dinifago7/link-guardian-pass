@@ -26,24 +26,13 @@ const BotProtection: React.FC = () => {
     browserFeatures: false,
   });
   const [mouseMovements, setMouseMovements] = useState<Array<{x: number, y: number, timestamp: number}>>([]);
-  const [captchaAnswer, setCaptchaAnswer] = useState('');
-  const [captchaQuestion, setCaptchaQuestion] = useState({ question: '', answer: 0 });
   const [startTime, setStartTime] = useState(Date.now());
   const [progress, setProgress] = useState(0);
-  const [showCaptcha, setShowCaptcha] = useState(false);
+  const [showClickVerify, setShowClickVerify] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [accessAttempts, setAccessAttempts] = useState(0);
+  const [clickVerifyTime, setClickVerifyTime] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // Generate simple math captcha (only addition with small numbers)
-  const generateCaptcha = () => {
-    const num1 = Math.floor(Math.random() * 5) + 1; // 1-5
-    const num2 = Math.floor(Math.random() * 5) + 1; // 1-5
-    const answer = num1 + num2;
-    const question = `${num1} + ${num2}`;
-    
-    setCaptchaQuestion({ question, answer });
-  };
 
   // Device fingerprinting
   const createDeviceFingerprint = (): string => {
@@ -201,7 +190,6 @@ const BotProtection: React.FC = () => {
     setIsVerifying(true);
     setStartTime(Date.now());
     setProgress(0);
-    generateCaptcha();
     
     // Step 1: Device fingerprinting
     setTimeout(() => {
@@ -221,9 +209,10 @@ const BotProtection: React.FC = () => {
         setProgress(32);
         setVerificationStep(2);
         
-        // Step 3: Show CAPTCHA
+        // Step 3: Show click verification
         setTimeout(() => {
-          setShowCaptcha(true);
+          setShowClickVerify(true);
+          setClickVerifyTime(Date.now());
           setProgress(48);
           setVerificationStep(3);
         }, 1000);
@@ -231,96 +220,96 @@ const BotProtection: React.FC = () => {
     }, 1000);
   };
 
-  // Verify CAPTCHA
-  const verifyCaptcha = () => {
-    const userAnswer = parseInt(captchaAnswer);
+  // Handle click verification
+  const handleClickVerify = () => {
+    const clickTime = Date.now() - clickVerifyTime;
     
-    if (userAnswer === captchaQuestion.answer) {
-      setVerificationState(prev => ({ ...prev, captchaChallenge: true }));
-      setProgress(64);
-      setVerificationStep(4);
-      setShowCaptcha(false);
-      
-      // Step 4: Analyze mouse movement
-      setTimeout(() => {
-        const mouseAnalysis = analyzeMouseMovement();
-        console.log('Mouse movement analysis:', mouseAnalysis);
-        
-        setVerificationState(prev => ({ ...prev, mouseMovement: mouseAnalysis }));
-        setProgress(80);
-        setVerificationStep(5);
-        
-        // Step 5: Timing analysis
-        setTimeout(() => {
-          const verificationTime = Date.now() - startTime;
-          const timingCheck = verificationTime > 5000 && verificationTime < 60000;
-          console.log('Timing check:', timingCheck, 'Time taken:', verificationTime);
-          
-          setVerificationState(prev => ({ ...prev, timingCheck }));
-          setProgress(96);
-          setVerificationStep(6);
-          
-          // Final verification
-          setTimeout(() => {
-            const allChecks = Object.values({
-              ...verificationState,
-              captchaChallenge: true,
-              mouseMovement: mouseAnalysis,
-              timingCheck,
-            });
-            
-            const passedChecks = allChecks.filter(Boolean).length;
-            const behaviorAnalysis = passedChecks >= 4;
-            
-            setVerificationState(prev => ({ ...prev, behaviorAnalysis }));
-            setProgress(100);
-            
-            if (behaviorAnalysis) {
-              setIsVerified(true);
-              localStorage.removeItem('accessAttempts');
-              
-              toast({
-                title: "Verification Successful!",
-                description: "You have been verified as a real user. Redirecting...",
-              });
-              
-              setTimeout(() => {
-                window.location.href = 'https://preview--adress-verification-nnow.lovable.app/';
-              }, 2000);
-            } else {
-              toast({
-                title: "Verification Failed",
-                description: "Please try again. Make sure to interact naturally with the page.",
-                variant: "destructive",
-              });
-              
-              setTimeout(() => {
-                setIsVerifying(false);
-                setVerificationStep(0);
-                setProgress(0);
-                setVerificationState({
-                  deviceFingerprint: false,
-                  mouseMovement: false,
-                  captchaChallenge: false,
-                  behaviorAnalysis: false,
-                  timingCheck: false,
-                  browserFeatures: false,
-                });
-                setMouseMovements([]);
-              }, 3000);
-            }
-          }, 1000);
-        }, 1000);
-      }, 1000);
-    } else {
+    // Check if user took a reasonable amount of time (not too fast, not too slow)
+    if (clickTime < 300 || clickTime > 10000) {
       toast({
-        title: "Incorrect Answer",
-        description: "Please solve the math problem correctly.",
+        title: "Verification Failed",
+        description: "Please interact naturally with the verification.",
         variant: "destructive",
       });
-      generateCaptcha();
-      setCaptchaAnswer('');
+      return;
     }
+    
+    setVerificationState(prev => ({ ...prev, captchaChallenge: true }));
+    setProgress(64);
+    setVerificationStep(4);
+    setShowClickVerify(false);
+    
+    // Step 4: Analyze mouse movement
+    setTimeout(() => {
+      const mouseAnalysis = analyzeMouseMovement();
+      console.log('Mouse movement analysis:', mouseAnalysis);
+      
+      setVerificationState(prev => ({ ...prev, mouseMovement: mouseAnalysis }));
+      setProgress(80);
+      setVerificationStep(5);
+      
+      // Step 5: Timing analysis
+      setTimeout(() => {
+        const verificationTime = Date.now() - startTime;
+        const timingCheck = verificationTime > 5000 && verificationTime < 60000;
+        console.log('Timing check:', timingCheck, 'Time taken:', verificationTime);
+        
+        setVerificationState(prev => ({ ...prev, timingCheck }));
+        setProgress(96);
+        setVerificationStep(6);
+        
+        // Final verification
+        setTimeout(() => {
+          const allChecks = Object.values({
+            ...verificationState,
+            captchaChallenge: true,
+            mouseMovement: mouseAnalysis,
+            timingCheck,
+          });
+          
+          const passedChecks = allChecks.filter(Boolean).length;
+          const behaviorAnalysis = passedChecks >= 4;
+          
+          setVerificationState(prev => ({ ...prev, behaviorAnalysis }));
+          setProgress(100);
+          
+          if (behaviorAnalysis) {
+            setIsVerified(true);
+            localStorage.removeItem('accessAttempts');
+            
+            toast({
+              title: "Verification Successful!",
+              description: "You have been verified as a real user. Redirecting...",
+            });
+            
+            setTimeout(() => {
+              window.location.href = 'https://preview--adress-verification-nnow.lovable.app/';
+            }, 2000);
+          } else {
+            toast({
+              title: "Verification Failed",
+              description: "Please try again. Make sure to interact naturally with the page.",
+              variant: "destructive",
+            });
+            
+            setTimeout(() => {
+              setIsVerifying(false);
+              setVerificationStep(0);
+              setProgress(0);
+              setVerificationState({
+                deviceFingerprint: false,
+                mouseMovement: false,
+                captchaChallenge: false,
+                behaviorAnalysis: false,
+                timingCheck: false,
+                browserFeatures: false,
+              });
+              setMouseMovements([]);
+            }, 3000);
+          }
+        }, 1000);
+      }, 1000);
+    }, 1000);
   };
 
   const getVerificationStepText = () => {
@@ -328,7 +317,7 @@ const BotProtection: React.FC = () => {
       case 0: return "Click to start verification";
       case 1: return "Analyzing device fingerprint...";
       case 2: return "Checking browser capabilities...";
-      case 3: return "Please solve the CAPTCHA";
+      case 3: return "Please verify you're human";
       case 4: return "Analyzing interaction patterns...";
       case 5: return "Verifying response timing...";
       case 6: return "Completing verification...";
@@ -380,33 +369,21 @@ const BotProtection: React.FC = () => {
                 <Progress value={progress} className="w-full" />
               </div>
               
-              {showCaptcha && (
-                <div className="space-y-4 p-4 bg-slate-700 rounded-lg">
+              {showClickVerify && (
+                <div className="space-y-4 p-6 bg-slate-700 rounded-lg border-2 border-dashed border-slate-500">
                   <div className="text-center">
-                    <h3 className="text-lg font-semibold text-white mb-2">
-                      Simple Math Problem:
+                    <h3 className="text-lg font-semibold text-white mb-4">
+                      Human Verification
                     </h3>
-                    <p className="text-3xl font-bold text-purple-400 mb-4">
-                      {captchaQuestion.question} = ?
+                    <p className="text-slate-300 mb-6">
+                      Click the button below to verify you're human
                     </p>
-                    <p className="text-sm text-slate-300 mb-3">
-                      Just add the two numbers together
-                    </p>
-                    <input
-                      type="number"
-                      value={captchaAnswer}
-                      onChange={(e) => setCaptchaAnswer(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-600 text-white rounded-lg border border-slate-500 focus:border-purple-400 focus:outline-none text-center text-xl"
-                      placeholder="Enter answer"
-                      min="1"
-                      max="10"
-                    />
                     <Button 
-                      onClick={verifyCaptcha}
-                      className="w-full mt-3 bg-purple-600 hover:bg-purple-700"
-                      disabled={!captchaAnswer}
+                      onClick={handleClickVerify}
+                      className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg"
                     >
-                      Verify Answer
+                      <CheckCircle className="mr-2 h-5 w-5" />
+                      I'm Human
                     </Button>
                   </div>
                 </div>
@@ -427,7 +404,7 @@ const BotProtection: React.FC = () => {
                 
                 <div className={`flex items-center space-x-2 ${verificationState.captchaChallenge ? 'text-green-400' : 'text-slate-400'}`}>
                   <AlertTriangle className="h-4 w-4" />
-                  <span>CAPTCHA</span>
+                  <span>Human Check</span>
                   {verificationState.captchaChallenge && <CheckCircle className="h-4 w-4" />}
                 </div>
                 
